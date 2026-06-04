@@ -51,7 +51,7 @@ async function fetchAllItems() {
     boards(ids: ${BOARD_ID}) {
       items_page(limit: 250) {
         cursor
-        items { id name column_values(ids:[${colIds}]) { id text } }
+        items { id name column_values(ids:[${colIds}]) { id text ... on BoardRelationValue { display_value } } }
       }
     }
   }`);
@@ -62,7 +62,7 @@ async function fetchAllItems() {
     data = await gql(`query {
       next_items_page(limit: 250, cursor: "${cursor}") {
         cursor
-        items { id name column_values(ids:[${colIds}]) { id text } }
+        items { id name column_values(ids:[${colIds}]) { id text ... on BoardRelationValue { display_value } } }
       }
     }`);
     page = data.next_items_page;
@@ -88,7 +88,8 @@ function parseCanaux(t) {
 
 function colMap(item) {
   const m = {};
-  item.column_values.forEach(cv => { m[cv.id] = cv.text; });
+  // Pour les colonnes board_relation, le nom du client est dans display_value (text est null).
+  item.column_values.forEach(cv => { m[cv.id] = (cv.display_value != null ? cv.display_value : cv.text); });
   return m;
 }
 
