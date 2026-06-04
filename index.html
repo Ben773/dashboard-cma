@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Campagnes CMA — Matcheo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1c2536; --muted:#6b7689;
+    --line:#e6eaf2; --brand:#0a3d62; --brand2:#1e6091; --accent:#3aa0ff;
+    --green:#00c875; --orange:#fdab3d; --red:#df2f4a; --coral:#ff7575;
+    --purple:#9d50dd; --blue:#579bfc; --cyan:#74afcc; --pink:#ff5ac4; --grey:#c4c4c4;
+    --shadow:0 1px 3px rgba(20,40,80,.06),0 6px 24px rgba(20,40,80,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:28px 24px 64px}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+  .title h1{margin:0;font-size:26px;letter-spacing:-.4px}
+  .title p{margin:6px 0 0;color:var(--muted);font-size:14px}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:var(--brand);color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px}
+  .meta-upd{color:var(--muted);font-size:12px;text-align:right}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+  .fgroup{display:flex;gap:6px;background:#fff;padding:5px;border-radius:12px;box-shadow:var(--shadow)}
+  .chip{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .chip:hover{color:var(--ink)}
+  .chip.active{background:var(--brand);color:#fff}
+  .flabel{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-right:2px}
+
+  .section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--brand2);margin:26px 2px 12px;display:flex;align-items:center;gap:8px}
+  .section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  @media(max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--card);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi .lab{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px}
+  .kpi .val{font-size:26px;font-weight:750;letter-spacing:-.5px;line-height:1}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:6px}
+  .kpi .bar{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  .g2{grid-template-columns:1fr 1fr}
+  @media(max-width:1000px){.g3,.g2{grid-template-columns:1fr}}
+  .panel{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}
+  .panel h3{margin:0 0 14px;font-size:14px;font-weight:700}
+  .panel .ch{position:relative;height:240px}
+  .panel.tall .ch{height:300px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 10px;border-bottom:2px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+  thead th:hover{color:var(--ink)}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:hover{background:#f8fafd}
+  .name-cell{font-weight:600;max-width:280px}
+  .name-cell a{color:var(--ink);text-decoration:none}
+  .name-cell a:hover{color:var(--brand2);text-decoration:underline}
+  .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#eef2f9;color:var(--brand2);margin:1px 2px 1px 0}
+  .cli{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .cli.cma{background:#e6f0fb;color:#0a3d62}
+  .cli.cmaf{background:#e8f7ef;color:#0a7a45}
+  .muted{color:var(--muted)}
+  .right{text-align:right}
+  .empty{color:var(--grey)}
+  footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
+  .legend-mini{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend-mini span{display:inline-flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title">
+      <span class="badge">● Matcheo × CMA Bretagne</span>
+      <h1>Dashboard de suivi des campagnes</h1>
+      <p>CMA &amp; CMA Formation — vue opérationnelle &amp; financière, données issues de Monday.com</p>
+    </div>
+    <div class="meta-upd">
+      <div>Dernière mise à jour</div>
+      <div id="updated" style="font-weight:700;color:var(--ink);font-size:14px"></div>
+      <div id="count-line"></div>
+    </div>
+  </header>
+
+  <div class="filters">
+    <span class="flabel">Client</span>
+    <div class="fgroup" id="f-client">
+      <button class="chip active" data-v="all">Tous</button>
+      <button class="chip" data-v="CMA">CMA</button>
+      <button class="chip" data-v="CMA Formation">CMA Formation</button>
+    </div>
+    <span class="flabel" style="margin-left:8px">Statut</span>
+    <div class="fgroup" id="f-statut">
+      <button class="chip active" data-v="all">Tous</button>
+      <button class="chip" data-v="Lancée">En cours</button>
+      <button class="chip" data-v="Signée">À venir</button>
+      <button class="chip" data-v="Terminée">Terminées</button>
+      <button class="chip" data-v="__attention">À traiter</button>
+    </div>
+  </div>
+
+  <!-- ===================== OPÉRATIONNEL ===================== -->
+  <div class="section-label">Suivi opérationnel</div>
+  <div class="kpis" id="kpis-op"></div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="panel"><h3>Répartition par statut</h3><div class="ch"><canvas id="c-statut"></canvas></div></div>
+    <div class="panel"><h3>Campagnes par canal</h3><div class="ch"><canvas id="c-canal"></canvas></div></div>
+    <div class="panel"><h3>Campagnes par client</h3><div class="ch"><canvas id="c-client"></canvas></div></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="panel tall"><h3>Volume de campagnes par mois (échéancier)</h3><div class="ch"><canvas id="c-mois"></canvas></div></div>
+    <div class="panel tall">
+      <h3>Prochaines campagnes</h3>
+      <div style="max-height:300px;overflow:auto" id="upcoming"></div>
+    </div>
+  </div>
+
+  <!-- ===================== FINANCIER ===================== -->
+  <div class="section-label">Suivi financier</div>
+  <div class="kpis" id="kpis-fin"></div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="panel"><h3>Honoraires HT — état de facturation</h3><div class="ch"><canvas id="c-facthono"></canvas></div>
+      <div class="legend-mini">
+        <span><i class="dot" style="background:var(--green)"></i>Payé</span>
+        <span><i class="dot" style="background:var(--orange)"></i>Facturé</span>
+        <span><i class="dot" style="background:var(--red)"></i>À facturer</span>
+        <span><i class="dot" style="background:var(--grey)"></i>Non défini</span>
+      </div>
+    </div>
+    <div class="panel"><h3>Budget média &amp; honoraires HT par mois</h3><div class="ch"><canvas id="c-finmois"></canvas></div></div>
+  </div>
+
+  <!-- ===================== TABLE ===================== -->
+  <div class="section-label">Détail des campagnes</div>
+  <div class="panel" style="padding:8px 14px 14px">
+    <div style="overflow:auto">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-k="nom">Campagne</th>
+            <th data-k="client">Client</th>
+            <th data-k="statut">Statut</th>
+            <th data-k="debut">Échéancier</th>
+            <th data-k="canaux">Canaux</th>
+            <th data-k="mediaHT" class="num">Média HT</th>
+            <th data-k="mediaStatut">Média</th>
+            <th data-k="honoHT" class="num">Honoraires HT</th>
+            <th data-k="honoStatut">Honoraires</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Généré par Claude pour Matcheo · Source : tableau « Campagnes » Monday.com (board 5091250450) ·
+    <span id="foot-count"></span>
+  </footer>
+</div>
+
+<script>
+/* ====== DONNÉES (régénérées depuis Monday) ====== */
+/*DATA_START*/
+const META = { generatedAt: "2026-06-04", boardUrl: "https://matcheo-company.monday.com/boards/5091250450" };
+const ITEMS = [
+{id:2694857885,nom:"Campagne JPO Janvier 2026",client:"CMA Formation",statut:"Terminée",debut:"2026-01-02",fin:"2026-01-24",canaux:["Meta","TikTok"],mediaHT:7691.67,mediaStatut:"Payé",honoHT:1475,honoStatut:"Payé",code:"CMA-JPO_2026-01"},
+{id:2694855970,nom:"Campagne Parcoursup",client:"CMA Formation",statut:"Terminée",debut:"2026-01-29",fin:"2026-03-12",canaux:["TikTok","Meta"],mediaHT:2691.67,mediaStatut:"Payé",honoHT:1475,honoStatut:"Payé",code:"CMA-PARCOURSUP_2026-01"},
+{id:2694866270,nom:"Campagne Formations Continues 2026",client:"CMA",statut:"Terminée",debut:"2026-01-09",fin:"2026-02-04",canaux:["Meta"],mediaHT:5583.33,mediaStatut:"Payé",honoHT:2750,honoStatut:"Payé",code:"CMA-FC_2026-01"},
+{id:2694857956,nom:"Campagne VAE+Bilan 2026",client:"CMA",statut:"Terminée",debut:"2026-02-06",fin:"2026-03-04",canaux:["Meta"],mediaHT:1983.33,mediaStatut:"Payé",honoHT:1350,honoStatut:"Payé",code:"CMA-VAE_2026-01"},
+{id:2694866502,nom:"Campagne notoriété",client:"CMA Formation",statut:"Terminée",debut:"2026-02-13",fin:"2026-02-27",canaux:["Meta","TikTok"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NOTO_2026-02"},
+{id:2694863058,nom:"Campagne Filières en tension (plusieurs phases) 40-60",client:"CMA Formation",statut:"Lancée",debut:"2026-03-30",fin:"2026-07-10",canaux:["TikTok","Meta","Google"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-TENSION_2026"},
+{id:2694855912,nom:"Campagne Hygiène alimentaire : promotion offre",client:"CMA",statut:"Terminée",debut:"2026-03-02",fin:"2026-03-31",canaux:["Meta"],mediaHT:2058.33,mediaStatut:"Payé",honoHT:1275,honoStatut:"Payé",code:"CMA-HYGIENE_2026-03"},
+{id:2753753932,nom:"Post boosté Numérique – Webinaire 12 mars",client:"CMA",statut:"Terminée",debut:"2026-03-02",fin:"2026-03-11",canaux:["Meta"],mediaHT:991.67,mediaStatut:"Payé",honoHT:675,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-03"},
+{id:2694863465,nom:"Campagne JPO 27-28 Mars 2026",client:"CMA Formation",statut:"Terminée",debut:"2026-03-06",fin:"2026-03-28",canaux:["Meta","TikTok"],mediaHT:6508,mediaStatut:"Payé",honoHT:1825,honoStatut:"Payé",code:"CMA-JPO_2026-03"},
+{id:2694857728,nom:"Posts boostés JEMA",client:"CMA",statut:"Terminée",debut:"2026-03-15",fin:"2026-04-01",canaux:["Meta"],mediaHT:728.33,mediaStatut:"Payé",honoHT:105,honoStatut:"Payé",code:"CMA-JEMA_2026-03"},
+{id:2756968927,nom:"Campagne Création/Reprise entreprise",client:"CMA",statut:"Lancée",debut:"2026-04-27",fin:"2026-06-11",canaux:[],mediaHT:6858.33,mediaStatut:"Payé",honoHT:1475,honoStatut:"Payé",code:"CMA-CREA_2026-04"},
+{id:2753763118,nom:"Post boosté Numérique – Webinaire 02 avril",client:"CMA",statut:"Terminée",debut:"2026-03-24",fin:"2026-04-01",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-04"},
+{id:2756975606,nom:"Campagne Artisan Durable",client:"CMA",statut:"Lancée",debut:"2026-05-04",fin:"2026-06-30",canaux:[],mediaHT:1558,mediaStatut:"Facturé",honoHT:1775,honoStatut:"Facturé",code:"CMA-DURABLE_2026-05"},
+{id:2880299945,nom:"Campagne Conception de site vitrine",client:"CMA",statut:"Lancée",debut:"2026-05-04",fin:"2026-06-14",canaux:[],mediaHT:780.83,mediaStatut:"Facturé",honoHT:52.5,honoStatut:"Facturé",code:null},
+{id:2753759954,nom:"Post boosté Numérique – Webinaire 21 mai",client:"CMA",statut:"Lancée",debut:"2026-05-12",fin:"2026-05-20",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-05"},
+{id:2933326075,nom:"Campagne formalités Google Ads",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2933326961,nom:"Campagne Recrutement toutes filières apprentissage",client:"CMA Formation",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2933338228,nom:"Campagne Tartapain",client:"CMA Formation",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2933338275,nom:"Campagne Hygiène sécurité alimentaire",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2753755657,nom:"Post boosté Numérique – Webinaire 18 juin",client:"CMA",statut:"Signée",debut:"2026-06-09",fin:"2026-06-17",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-06"},
+{id:2756974438,nom:"Campagne ADEA",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-FC_2026-04"},
+{id:2942702501,nom:"Campagne VAE+Bilan vague 2",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:1412.5,mediaStatut:null,honoHT:1087.5,honoStatut:null,code:null},
+{id:2950033848,nom:"Campagne Parcoursup 2",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2950927262,nom:"Campagne ODS Alimentaire (hygiène) Google ads",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2950936778,nom:"Campagne Formalités Google ads",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2950934437,nom:"Campagne FI Apprentissage Google ads",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2950930212,nom:"Campagne Tartapain Google ads",client:"CMA Formation",statut:"Bloquée",debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2950926832,nom:"Campagne Numérique Google ads",client:"CMA",statut:"Bloquée",debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2744780239,nom:"Taggage CMA",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2753753870,nom:"Post boosté Numérique – Webinaire 17 sept.",client:"CMA",statut:"Signée",debut:"2026-09-08",fin:"2026-09-16",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-09"},
+{id:2756972621,nom:"Campagne Formation Continue",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-FC_2026-09"},
+{id:2756972846,nom:"Campagne Numérique",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-NUM_2026-09"},
+{id:2965038561,nom:"Campagne Énergie",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2753761537,nom:"Post boosté Numérique – Webinaire 15 oct.",client:"CMA",statut:"Signée",debut:"2026-10-06",fin:"2026-10-14",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-10"},
+{id:2756978636,nom:"Campagne Pass Liberté",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-PASSLIB_2026-10"},
+{id:2964973407,nom:"Promotion apprentissage notoriete",client:"CMA Formation",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2753764377,nom:"Post boosté Numérique – Webinaire 19 nov.",client:"CMA",statut:"Signée",debut:"2026-11-10",fin:"2026-11-18",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-11"},
+{id:2756986175,nom:"Campagne Offre Transmission",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-TRANS_2026-11"},
+{id:2757015867,nom:"Campagne Plateforme micro (sous réserve)",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-MICRO_2026-11"},
+{id:2964973657,nom:"JPO 3 Google Ads",client:"CMA Formation",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:null},
+{id:2753754069,nom:"Post boosté Numérique – Webinaire 17 déc.",client:"CMA",statut:"Signée",debut:"2026-12-08",fin:"2026-12-16",canaux:["Meta"],mediaHT:null,mediaStatut:"Payé",honoHT:null,honoStatut:"Payé",code:"CMA-NUMBOOST_2026-12"},
+{id:2756986315,nom:"Campagne Métiers d'art (pas d'IA)",client:"CMA",statut:null,debut:null,fin:null,canaux:[],mediaHT:null,mediaStatut:null,honoHT:null,honoStatut:null,code:"CMA-ART_2026-12"}
+];
+/*DATA_END*/
+
+/* ====== CONFIG ====== */
+const TODAY = META.generatedAt;
+const STATUT_COLORS = {
+  "Terminée":"#00c875","Lancée":"#ff7575","Signée":"#fdab3d","Plan envoyé":"#74afcc",
+  "Plan à faire":"#579bfc","Bilan à envoyer":"#ff5ac4","Bloquée":"#9d50dd","À cadrer":"#c4c4c4"
+};
+const FACT_COLORS = {"Payé":"#00c875","Facturé":"#fdab3d","À facturer":"#df2f4a","N/A":"#9aadbd","Non défini":"#c4c4c4"};
+const CANAL_COLORS = {"Meta":"#0866ff","TikTok":"#111","Google":"#ea4335","Taggage":"#7c8aa0","CRM":"#9d50dd"};
+const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+
+/* ====== HELPERS ====== */
+const eur = n => (n==null) ? "—" : n.toLocaleString("fr-FR",{maximumFractionDigits:0})+" €";
+const eur0 = n => n.toLocaleString("fr-FR",{maximumFractionDigits:0})+" €";
+const stOf = it => it.statut || "À cadrer";
+const factOf = s => s || "Non défini";
+const fmtDate = d => { if(!d) return null; const [y,m,da]=d.split("-"); return da+"/"+m; };
+const isAttention = it => { const s=it.statut; return !s || s==="Bloquée"; };
+
+let charts = {};
+let state = { client:"all", statut:"all", sortKey:"debut", sortDir:1 };
+
+function applyFilters(){
+  return ITEMS.filter(it=>{
+    if(state.client!=="all" && it.client!==state.client) return false;
+    if(state.statut==="all") return true;
+    if(state.statut==="__attention") return isAttention(it);
+    return it.statut===state.statut;
+  });
+}
+
+/* ====== KPIs ====== */
+function renderKPIs(data){
+  const total=data.length;
+  const enCours=data.filter(d=>d.statut==="Lancée").length;
+  const aVenir=data.filter(d=>d.statut==="Signée").length;
+  const term=data.filter(d=>d.statut==="Terminée").length;
+  const attn=data.filter(isAttention).length;
+
+  const opCards=[
+    {lab:"Campagnes",val:total,sub:"sur la sélection",c:"var(--brand)"},
+    {lab:"En cours",val:enCours,sub:"statut « Lancée »",c:"var(--coral)"},
+    {lab:"À venir",val:aVenir,sub:"statut « Signée »",c:"var(--orange)"},
+    {lab:"Terminées",val:term,sub:"clôturées",c:"var(--green)"},
+    {lab:"À traiter",val:attn,sub:"bloquées ou à cadrer",c:"var(--purple)"},
+  ];
+  document.getElementById("kpis-op").innerHTML = opCards.map(k=>kpiHTML(k)).join("");
+
+  const media=data.reduce((s,d)=>s+(d.mediaHT||0),0);
+  const hono=data.reduce((s,d)=>s+(d.honoHT||0),0);
+  const honoAFact=data.filter(d=>d.honoStatut==="À facturer").reduce((s,d)=>s+(d.honoHT||0),0);
+  const honoPaye=data.filter(d=>d.honoStatut==="Payé").reduce((s,d)=>s+(d.honoHT||0),0);
+  const honoFact=data.filter(d=>d.honoStatut==="Facturé").reduce((s,d)=>s+(d.honoHT||0),0);
+
+  const finCards=[
+    {lab:"Budget média HT",val:eur0(media),sub:"investissement publicitaire",c:"var(--accent)"},
+    {lab:"Honoraires HT",val:eur0(hono),sub:"CA Matcheo",c:"var(--brand)"},
+    {lab:"Honoraires payés",val:eur0(honoPaye),sub:"encaissés",c:"var(--green)"},
+    {lab:"Facturé (à encaisser)",val:eur0(honoFact),sub:"en attente de paiement",c:"var(--orange)"},
+    {lab:"Reste à facturer",val:eur0(honoAFact),sub:"honoraires non facturés",c:"var(--red)"},
+  ];
+  document.getElementById("kpis-fin").innerHTML = finCards.map(k=>kpiHTML(k)).join("");
+}
+function kpiHTML(k){
+  return `<div class="kpi"><div class="bar" style="background:${k.c}"></div>
+    <div class="lab">${k.lab}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div></div>`;
+}
+
+/* ====== CHARTS ====== */
+function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
+
+function countBy(data, fn){
+  const m={}; data.forEach(d=>{const k=fn(d); if(k==null)return; (Array.isArray(k)?k:[k]).forEach(x=>{m[x]=(m[x]||0)+1});}); return m;
+}
+
+function renderCharts(data){
+  // Statut (donut)
+  const st=countBy(data, stOf);
+  const stKeys=Object.keys(STATUT_COLORS).filter(k=>st[k]);
+  destroy("c-statut");
+  charts["c-statut"]=new Chart(document.getElementById("c-statut"),{
+    type:"doughnut",
+    data:{labels:stKeys,datasets:[{data:stKeys.map(k=>st[k]),backgroundColor:stKeys.map(k=>STATUT_COLORS[k]),borderWidth:2,borderColor:"#fff"}]},
+    options:{plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:11}}}},cutout:"60%",maintainAspectRatio:false}
+  });
+
+  // Canal (bar horizontal)
+  const cn=countBy(data, d=> d.canaux.length?d.canaux:null);
+  const cnKeys=Object.keys(cn).sort((a,b)=>cn[b]-cn[a]);
+  destroy("c-canal");
+  charts["c-canal"]=new Chart(document.getElementById("c-canal"),{
+    type:"bar",
+    data:{labels:cnKeys,datasets:[{data:cnKeys.map(k=>cn[k]),backgroundColor:cnKeys.map(k=>CANAL_COLORS[k]||"#789"),borderRadius:6}]},
+    options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{precision:0}}},maintainAspectRatio:false}
+  });
+
+  // Client (donut)
+  const cl=countBy(data, d=>d.client);
+  const clKeys=Object.keys(cl);
+  destroy("c-client");
+  charts["c-client"]=new Chart(document.getElementById("c-client"),{
+    type:"doughnut",
+    data:{labels:clKeys,datasets:[{data:clKeys.map(k=>cl[k]),backgroundColor:clKeys.map(k=>k==="CMA"?"#1e6091":"#0a7a45"),borderWidth:2,borderColor:"#fff"}]},
+    options:{plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11}}}},cutout:"60%",maintainAspectRatio:false}
+  });
+
+  // Par mois (stacked by client) — based on start month
+  const byMonth = Array.from({length:12},()=>({CMA:0,"CMA Formation":0}));
+  data.forEach(d=>{ if(d.debut){const mi=parseInt(d.debut.split("-")[1],10)-1; byMonth[mi][d.client]++;} });
+  destroy("c-mois");
+  charts["c-mois"]=new Chart(document.getElementById("c-mois"),{
+    type:"bar",
+    data:{labels:MONTHS,datasets:[
+      {label:"CMA",data:byMonth.map(m=>m.CMA),backgroundColor:"#1e6091",borderRadius:4},
+      {label:"CMA Formation",data:byMonth.map(m=>m["CMA Formation"]),backgroundColor:"#0a7a45",borderRadius:4}
+    ]},
+    options:{plugins:{legend:{position:"top",labels:{boxWidth:12,font:{size:11}}}},
+      scales:{x:{stacked:true},y:{stacked:true,ticks:{precision:0}}},maintainAspectRatio:false}
+  });
+
+  // Facturation honoraires (donut €)
+  const factKeys=["Payé","Facturé","À facturer","Non défini"];
+  const factSum={}; factKeys.forEach(k=>factSum[k]=0);
+  data.forEach(d=>{ if(d.honoHT){ factSum[factOf(d.honoStatut)]+=d.honoHT; } });
+  const fk=factKeys.filter(k=>factSum[k]>0);
+  destroy("c-facthono");
+  charts["c-facthono"]=new Chart(document.getElementById("c-facthono"),{
+    type:"doughnut",
+    data:{labels:fk,datasets:[{data:fk.map(k=>Math.round(factSum[k])),backgroundColor:fk.map(k=>FACT_COLORS[k]),borderWidth:2,borderColor:"#fff"}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.label+" : "+eur0(c.parsed)}}},cutout:"62%",maintainAspectRatio:false}
+  });
+
+  // Budget par mois (media + hono)
+  const finMonth=Array.from({length:12},()=>({media:0,hono:0}));
+  data.forEach(d=>{ if(d.debut){const mi=parseInt(d.debut.split("-")[1],10)-1; finMonth[mi].media+=(d.mediaHT||0); finMonth[mi].hono+=(d.honoHT||0);} });
+  destroy("c-finmois");
+  charts["c-finmois"]=new Chart(document.getElementById("c-finmois"),{
+    type:"bar",
+    data:{labels:MONTHS,datasets:[
+      {label:"Média HT",data:finMonth.map(m=>Math.round(m.media)),backgroundColor:"#3aa0ff",borderRadius:4},
+      {label:"Honoraires HT",data:finMonth.map(m=>Math.round(m.hono)),backgroundColor:"#0a3d62",borderRadius:4}
+    ]},
+    options:{plugins:{legend:{position:"top",labels:{boxWidth:12,font:{size:11}}},
+      tooltip:{callbacks:{label:c=>c.dataset.label+" : "+eur0(c.parsed.y)}}},
+      scales:{y:{ticks:{callback:v=>v>=1000?(v/1000)+"k":v}}},maintainAspectRatio:false}
+  });
+}
+
+/* ====== UPCOMING ====== */
+function renderUpcoming(data){
+  const up=data.filter(d=>d.debut && d.fin>=TODAY).sort((a,b)=>a.debut<b.debut?-1:1);
+  const el=document.getElementById("upcoming");
+  if(!up.length){ el.innerHTML='<p class="muted" style="padding:14px">Aucune campagne à venir dans la sélection.</p>'; return; }
+  el.innerHTML = up.map(d=>{
+    const live = d.debut<=TODAY && d.fin>=TODAY;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${STATUT_COLORS[stOf(d)]};flex:0 0 auto"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nom}</div>
+        <div class="muted" style="font-size:11px">${d.client} · ${fmtDate(d.debut)} → ${fmtDate(d.fin)}${d.canaux.length?" · "+d.canaux.join(", "):""}</div>
+      </div>
+      ${live?'<span class="pill" style="background:#fff0f0;color:#df2f4a"><span class="dot" style="background:#ff7575"></span>En cours</span>':'<span class="pill" style="background:#fff6e8;color:#b9750a">À venir</span>'}
+    </div>`;
+  }).join("");
+}
+
+/* ====== TABLE ====== */
+function pill(label,color){ return `<span class="pill" style="background:${color}22;color:${color}"><span class="dot" style="background:${color}"></span>${label}</span>`; }
+function renderTable(data){
+  const tb=document.querySelector("#tbl tbody");
+  const sorted=[...data].sort((a,b)=>{
+    let va=a[state.sortKey], vb=b[state.sortKey];
+    if(state.sortKey==="mediaHT"||state.sortKey==="honoHT"){va=va||0;vb=vb||0;return (va-vb)*state.sortDir;}
+    va=(va==null?"":(""+va)); vb=(vb==null?"":(""+vb));
+    return va.localeCompare(vb,"fr")*state.sortDir;
+  });
+  tb.innerHTML=sorted.map(d=>{
+    const ech = d.debut? `${fmtDate(d.debut)} → ${fmtDate(d.fin)}` : '<span class="empty">—</span>';
+    const cli = d.client==="CMA"?'<span class="cli cma">CMA</span>':'<span class="cli cmaf">CMA Form.</span>';
+    const can = d.canaux.length? d.canaux.map(c=>`<span class="tag">${c}</span>`).join("") : '<span class="empty">—</span>';
+    return `<tr>
+      <td class="name-cell"><a href="${META.boardUrl}/pulses/${d.id}" target="_blank">${d.nom}</a></td>
+      <td>${cli}</td>
+      <td>${pill(stOf(d),STATUT_COLORS[stOf(d)])}</td>
+      <td class="muted">${ech}</td>
+      <td>${can}</td>
+      <td class="num">${eur(d.mediaHT)}</td>
+      <td>${d.mediaStatut?pill(d.mediaStatut,FACT_COLORS[factOf(d.mediaStatut)]):'<span class="empty">—</span>'}</td>
+      <td class="num">${eur(d.honoHT)}</td>
+      <td>${d.honoStatut?pill(d.honoStatut,FACT_COLORS[factOf(d.honoStatut)]):'<span class="empty">—</span>'}</td>
+    </tr>`;
+  }).join("");
+}
+
+/* ====== RENDER ALL ====== */
+function renderAll(){
+  const data=applyFilters();
+  renderKPIs(data);
+  renderCharts(data);
+  renderUpcoming(data);
+  renderTable(data);
+  document.getElementById("count-line").textContent = `${data.length} campagnes affichées`;
+  document.getElementById("foot-count").textContent = `${ITEMS.length} campagnes au total`;
+}
+
+/* ====== EVENTS ====== */
+function bindFilter(groupId, key){
+  document.querySelectorAll(`#${groupId} .chip`).forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll(`#${groupId} .chip`).forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      state[key]=btn.dataset.v;
+      renderAll();
+    });
+  });
+}
+bindFilter("f-client","client");
+bindFilter("f-statut","statut");
+document.querySelectorAll("#tbl thead th").forEach(th=>{
+  th.addEventListener("click",()=>{
+    const k=th.dataset.k;
+    if(state.sortKey===k) state.sortDir*=-1; else {state.sortKey=k;state.sortDir=1;}
+    renderTable(applyFilters());
+  });
+});
+
+/* ====== INIT ====== */
+document.getElementById("updated").textContent = new Date(META.generatedAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+renderAll();
+</script>
+</body>
+</html>
