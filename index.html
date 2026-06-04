@@ -50,9 +50,17 @@
   .panel.tall .ch{height:300px}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
-  thead th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 10px;border-bottom:2px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
-  thead th:hover{color:var(--ink)}
+  thead th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 10px;border-bottom:2px solid var(--line);user-select:none;white-space:nowrap}
   tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr.grp-head{cursor:pointer}
+  tr.grp-head td{background:#eef2f9;border-bottom:1px solid var(--line);padding:9px 12px}
+  tr.grp-head:hover td{background:#e6ecf6}
+  tr.grp-head .chev{display:inline-block;width:14px;color:var(--brand2);font-size:11px;transition:transform .15s;transform:rotate(0deg)}
+  tr.grp-head.collapsed .chev{transform:rotate(-90deg)}
+  tr.grp-head .grp-title{font-weight:750;color:var(--ink);font-size:13px;margin-right:8px}
+  tr.grp-head .grp-count{font-size:11px;color:var(--muted);font-weight:600}
+  tr.grp-head .grp-sum{float:right;font-size:11px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+  tr.grp-row.hidden{display:none}
   tbody tr:hover{background:#f8fafd}
   .name-cell{font-weight:600;max-width:280px}
   .name-cell a{color:var(--ink);text-decoration:none}
@@ -79,7 +87,6 @@
     <div class="title">
       <span class="badge">● Matcheo × CMA Bretagne</span>
       <h1>Dashboard de suivi des campagnes</h1>
-      <p>CMA &amp; CMA Formation — vue opérationnelle &amp; financière, données issues de Monday.com</p>
     </div>
     <div class="meta-upd">
       <div>Dernière mise à jour</div>
@@ -161,11 +168,6 @@
       </table>
     </div>
   </div>
-
-  <footer>
-    Généré par Claude pour Matcheo · Source : tableau « Campagnes » Monday.com (board 5091250450) ·
-    <span id="foot-count"></span>
-  </footer>
 </div>
 
 <script>
@@ -227,6 +229,7 @@ const STATUT_COLORS = {
 const FACT_COLORS = {"Payé":"#00c875","Facturé":"#fdab3d","À facturer":"#df2f4a","N/A":"#9aadbd","Non défini":"#c4c4c4"};
 const CANAL_COLORS = {"Meta":"#0866ff","TikTok":"#111","Google":"#ea4335","Taggage":"#7c8aa0","CRM":"#9d50dd"};
 const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+const MONTHS_FULL = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 
 /* ====== HELPERS ====== */
 const eur = n => (n==null) ? "—" : n.toLocaleString("fr-FR",{maximumFractionDigits:0})+" €";
@@ -237,7 +240,7 @@ const fmtDate = d => { if(!d) return null; const [y,m,da]=d.split("-"); return d
 const isAttention = it => { const s=it.statut; return !s || s==="Bloquée"; };
 
 let charts = {};
-let state = { client:"all", statut:"all", sortKey:"debut", sortDir:1 };
+let state = { client:"all", statut:"all", collapsed:new Set() };
 
 function applyFilters(){
   return ITEMS.filter(it=>{
@@ -385,30 +388,61 @@ function renderUpcoming(data){
 
 /* ====== TABLE ====== */
 function pill(label,color){ return `<span class="pill" style="background:${color}22;color:${color}"><span class="dot" style="background:${color}"></span>${label}</span>`; }
+function rowHTML(d){
+  const ech = d.debut? `${fmtDate(d.debut)} → ${fmtDate(d.fin)}` : '<span class="empty">—</span>';
+  const cli = d.client==="CMA"?'<span class="cli cma">CMA</span>':'<span class="cli cmaf">CMA Form.</span>';
+  const can = d.canaux.length? d.canaux.map(c=>`<span class="tag">${c}</span>`).join("") : '<span class="empty">—</span>';
+  return `<td class="name-cell"><a href="${META.boardUrl}/pulses/${d.id}" target="_blank">${d.nom}</a></td>
+    <td>${cli}</td>
+    <td>${pill(stOf(d),STATUT_COLORS[stOf(d)])}</td>
+    <td class="muted">${ech}</td>
+    <td>${can}</td>
+    <td class="num">${eur(d.mediaHT)}</td>
+    <td>${d.mediaStatut?pill(d.mediaStatut,FACT_COLORS[factOf(d.mediaStatut)]):'<span class="empty">—</span>'}</td>
+    <td class="num">${eur(d.honoHT)}</td>
+    <td>${d.honoStatut?pill(d.honoStatut,FACT_COLORS[factOf(d.honoStatut)]):'<span class="empty">—</span>'}</td>`;
+}
 function renderTable(data){
   const tb=document.querySelector("#tbl tbody");
-  const sorted=[...data].sort((a,b)=>{
-    let va=a[state.sortKey], vb=b[state.sortKey];
-    if(state.sortKey==="mediaHT"||state.sortKey==="honoHT"){va=va||0;vb=vb||0;return (va-vb)*state.sortDir;}
-    va=(va==null?"":(""+va)); vb=(vb==null?"":(""+vb));
-    return va.localeCompare(vb,"fr")*state.sortDir;
+  // Regroupe par mois de début d'échéancier ; campagnes sans date -> groupe dédié
+  const groups={};
+  data.forEach(d=>{
+    let key,order,label;
+    if(d.debut){ const mi=parseInt(d.debut.split("-")[1],10)-1; key="m"+mi; order=mi; label=MONTHS_FULL[mi]; }
+    else { key="none"; order=-1; label="Sans échéancier"; }
+    (groups[key]||(groups[key]={label,order,rows:[]})).rows.push(d);
   });
-  tb.innerHTML=sorted.map(d=>{
-    const ech = d.debut? `${fmtDate(d.debut)} → ${fmtDate(d.fin)}` : '<span class="empty">—</span>';
-    const cli = d.client==="CMA"?'<span class="cli cma">CMA</span>':'<span class="cli cmaf">CMA Form.</span>';
-    const can = d.canaux.length? d.canaux.map(c=>`<span class="tag">${c}</span>`).join("") : '<span class="empty">—</span>';
-    return `<tr>
-      <td class="name-cell"><a href="${META.boardUrl}/pulses/${d.id}" target="_blank">${d.nom}</a></td>
-      <td>${cli}</td>
-      <td>${pill(stOf(d),STATUT_COLORS[stOf(d)])}</td>
-      <td class="muted">${ech}</td>
-      <td>${can}</td>
-      <td class="num">${eur(d.mediaHT)}</td>
-      <td>${d.mediaStatut?pill(d.mediaStatut,FACT_COLORS[factOf(d.mediaStatut)]):'<span class="empty">—</span>'}</td>
-      <td class="num">${eur(d.honoHT)}</td>
-      <td>${d.honoStatut?pill(d.honoStatut,FACT_COLORS[factOf(d.honoStatut)]):'<span class="empty">—</span>'}</td>
-    </tr>`;
-  }).join("");
+  // Mois décroissant (décembre → janvier) ; "Sans échéancier" en dernier
+  const ordered=Object.values(groups).sort((a,b)=> b.order-a.order);
+  ordered.forEach(g=> g.rows.sort((a,b)=> (b.debut||"").localeCompare(a.debut||"")));
+
+  let html="";
+  ordered.forEach(g=>{
+    const collapsed=state.collapsed.has(g.label);
+    const media=g.rows.reduce((s,r)=>s+(r.mediaHT||0),0);
+    const hono=g.rows.reduce((s,r)=>s+(r.honoHT||0),0);
+    html+=`<tr class="grp-head${collapsed?" collapsed":""}" data-label="${g.label}">
+      <td colspan="9">
+        <span class="chev">▾</span>
+        <span class="grp-title">${g.label}</span>
+        <span class="grp-count">${g.rows.length} campagne${g.rows.length>1?"s":""}</span>
+        <span class="grp-sum">Média ${eur0(media)} · Honoraires ${eur0(hono)}</span>
+      </td></tr>`;
+    g.rows.forEach(d=>{ html+=`<tr class="grp-row${collapsed?" hidden":""}">${rowHTML(d)}</tr>`; });
+  });
+  tb.innerHTML=html;
+
+  // Accordéon : clic sur l'en-tête de mois pour replier/déplier
+  tb.querySelectorAll("tr.grp-head").forEach(h=>{
+    h.addEventListener("click",()=>{
+      const label=h.dataset.label;
+      const collapse=!state.collapsed.has(label);
+      if(collapse) state.collapsed.add(label); else state.collapsed.delete(label);
+      h.classList.toggle("collapsed",collapse);
+      let n=h.nextElementSibling;
+      while(n && !n.classList.contains("grp-head")){ n.classList.toggle("hidden",collapse); n=n.nextElementSibling; }
+    });
+  });
 }
 
 /* ====== RENDER ALL ====== */
@@ -419,7 +453,6 @@ function renderAll(){
   renderUpcoming(data);
   renderTable(data);
   document.getElementById("count-line").textContent = `${data.length} campagnes affichées`;
-  document.getElementById("foot-count").textContent = `${ITEMS.length} campagnes au total`;
 }
 
 /* ====== EVENTS ====== */
@@ -435,13 +468,6 @@ function bindFilter(groupId, key){
 }
 bindFilter("f-client","client");
 bindFilter("f-statut","statut");
-document.querySelectorAll("#tbl thead th").forEach(th=>{
-  th.addEventListener("click",()=>{
-    const k=th.dataset.k;
-    if(state.sortKey===k) state.sortDir*=-1; else {state.sortKey=k;state.sortDir=1;}
-    renderTable(applyFilters());
-  });
-});
 
 /* ====== INIT ====== */
 document.getElementById("updated").textContent = new Date(META.generatedAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
