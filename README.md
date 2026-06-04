@@ -1,23 +1,34 @@
-# Dashboard Campagnes CMA — mode d'emploi
+# Dashboard de suivi des campagnes CMA / CMA Formation
 
-## Fichiers
-- `index.html` — le dashboard (fichier unique, autonome, à partager).
-- `serve.js` — petit serveur local pour le prévisualiser (`node serve.js` puis http://localhost:8777).
-- `COMMENT_ACTUALISER.md` — ce fichier.
+**🔗 En ligne :** https://ben773.github.io/dashboard-cma/
 
-## Source des données
-Tableau **Campagnes** de Monday.com (board `5091250450`), filtré sur les clients
-**CMA** (id `2695108391`) et **CMA Formation** (id `2695105816`).
+Suivi opérationnel & financier des campagnes **CMA** et **CMA Formation**, à partir du
+tableau **Campagnes** de Monday.com (board `5091250450`), clients CMA (`2695108391`)
+et CMA Formation (`2695105816`).
 
-## Actualiser les données
-Les données sont figées dans `index.html` entre les balises `/*DATA_START*/` et `/*DATA_END*/`.
-Pour rafraîchir, demander à Claude (dans ce projet, avec le MCP Monday connecté) :
+## Fonctionnement
+- `index.html` — dashboard autonome (fichier unique). Les données sont figées entre
+  les balises `/*DATA_START*/` et `/*DATA_END*/`.
+- `refresh.js` — relit Monday via son API et réécrit le bloc de données.
+- `.github/workflows/refresh.yml` — exécute `refresh.js` **chaque jour à 05:00 UTC**
+  (~07:00 Paris l'été), puis committe et pousse si les données ont changé.
+  GitHub Pages republie automatiquement → l'URL est toujours à jour, même PC éteint.
 
-> « Actualise le dashboard CMA avec les dernières données de Monday »
+Le token API Monday est stocké dans le secret GitHub `MONDAY_TOKEN` (jamais dans le code).
 
-Claude relit le board, recalcule et réécrit le bloc de données. Tout le reste (KPIs,
-graphiques, table) se met à jour automatiquement à l'ouverture du fichier.
+## Actions manuelles
+- **Forcer une mise à jour maintenant :** onglet *Actions* → *Rafraîchir le dashboard CMA*
+  → *Run workflow*. (ou `gh workflow run refresh.yml`)
+- **Tester en local :** `node serve.js` puis http://localhost:8777
+- **Régénérer en local :** `MONDAY_TOKEN=xxx node refresh.js`
 
-## Mise à jour automatique (≥ 24h)
-Un rafraîchissement quotidien peut être planifié (routine programmée). Voir avec Claude
-pour la mise en place et le mode de partage du fichier (lien hébergé ou Google Drive).
+## Champs lus depuis Monday
+| Donnée | Colonne |
+|---|---|
+| Client | `board_relation_mm08s008` (via `display_value`) |
+| Statut | `color_mm08xtat` |
+| Échéancier | `timerange_mm08k7s5` |
+| Canaux | `dropdown_mm09snbc` |
+| Média HT / statut | `numeric_mm08yzzt` / `color_mm089w50` |
+| Honoraires HT / statut | `numeric_mm08a4wd` / `color_mm08s5fb` |
+| Code campagne | `text_mm08e5s6` |
