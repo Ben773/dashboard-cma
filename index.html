@@ -270,16 +270,16 @@ function renderKPIs(data){
 
   const media=data.reduce((s,d)=>s+(d.mediaHT||0),0);
   const hono=data.reduce((s,d)=>s+(d.honoHT||0),0);
-  const honoAFact=data.filter(d=>d.honoStatut==="À facturer").reduce((s,d)=>s+(d.honoHT||0),0);
   const honoPaye=data.filter(d=>d.honoStatut==="Payé").reduce((s,d)=>s+(d.honoHT||0),0);
   const honoFact=data.filter(d=>d.honoStatut==="Facturé").reduce((s,d)=>s+(d.honoHT||0),0);
+  const budgetTTC=(media+hono)*1.2;
 
   const finCards=[
     {lab:"Budget média HT",val:eur0(media),sub:"investissement publicitaire",c:"var(--accent)"},
     {lab:"Honoraires HT",val:eur0(hono),sub:"CA Matcheo",c:"var(--brand)"},
     {lab:"Honoraires payés",val:eur0(honoPaye),sub:"encaissés",c:"var(--green)"},
     {lab:"Facturé (à encaisser)",val:eur0(honoFact),sub:"en attente de paiement",c:"var(--orange)"},
-    {lab:"Reste à facturer",val:eur0(honoAFact),sub:"honoraires non facturés",c:"var(--red)"},
+    {lab:"Budget global TTC",val:eur0(budgetTTC),sub:"Média + Honoraires HT × 1,2",c:"var(--brand2)"},
   ];
   document.getElementById("kpis-fin").innerHTML = finCards.map(k=>kpiHTML(k)).join("");
 }
@@ -471,6 +471,9 @@ bindFilter("f-statut","statut");
 
 /* ====== INIT ====== */
 document.getElementById("updated").textContent = new Date(META.generatedAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+// Replie tous les mois par défaut, sauf le mois en cours ("Sans échéancier" reste ouvert)
+const _curMonth = MONTHS_FULL[parseInt(META.generatedAt.split("-")[1],10)-1];
+MONTHS_FULL.forEach(m=>{ if(m!==_curMonth) state.collapsed.add(m); });
 renderAll();
 </script>
 </body>
